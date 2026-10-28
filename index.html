@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UAN / ESI Document Scanner</title>
+<style>
+  :root { --bg:#f4f6f9; --card:#fff; --ink:#1c2430; --mute:#5b6675; --line:#d9dfe7; --pri:#1a5fb4; --pri-d:#144a8f; --bad:#c01c28; --ok:#1e7a3c; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  header { background:var(--pri); color:#fff; padding:14px 20px; }
+  header h1 { margin:0; font-size:19px; font-weight:600; }
+  header p { margin:2px 0 0; font-size:13px; opacity:.85; }
+  main { max-width:1100px; margin:18px auto; padding:0 14px 60px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin-bottom:14px; }
+  .card h2 { margin:0 0 8px; font-size:16px; }
+  .muted { color:var(--mute); font-size:13px; }
+  button, .btn { font:inherit; background:var(--pri); color:#fff; border:0; border-radius:7px; padding:9px 16px; cursor:pointer; }
+  button:hover { background:var(--pri-d); }
+  button.sec { background:#fff; color:var(--pri); border:1px solid var(--pri); }
+  button:disabled { background:#aab4c2; border-color:#aab4c2; color:#fff; cursor:not-allowed; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px 14px; }
+  label { display:block; font-size:12.5px; color:var(--mute); margin-bottom:2px; }
+  input[type=text], textarea { width:100%; font:inherit; padding:7px 9px; border:1px solid var(--line); border-radius:6px; background:#fff; }
+  textarea { min-height:64px; resize:vertical; }
+  input.bad, textarea.bad { border-color:var(--bad); background:#fff5f5; }
+  .msg-bad { color:var(--bad); font-size:12px; min-height:15px; }
+  .banner { background:#fff3cd; border:1px solid #e6cf7a; padding:12px 14px; border-radius:8px; margin-bottom:14px; }
+  .banner.err { background:#fde8e8; border-color:#e5a3a3; }
+  .ok { color:var(--ok); }
+  .bar { height:8px; background:#e3e8ef; border-radius:5px; overflow:hidden; margin:8px 0; }
+  .bar > div { height:100%; width:0; background:var(--pri); transition:width .2s; }
+  .review { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:16px; }
+  @media (max-width:820px) { .review { grid-template-columns:1fr; } }
+  .docs { position:sticky; top:10px; align-self:start; }
+  .docs img { width:100%; border:1px solid var(--line); border-radius:6px; margin-bottom:8px; cursor:zoom-in; }
+  #zoom { position:fixed; inset:0; background:rgba(0,0,0,.85); display:none; align-items:center; justify-content:center; z-index:9; }
+  #zoom img { max-width:96vw; max-height:96vh; }
+  .hidden { display:none !important; }
+  .summary { padding:8px 12px; border-radius:7px; margin-bottom:12px; background:#eef4fb; }
+  .summary.warn { background:#fff3cd; }
+</style>
+</head>
+<body>
+<header>
+  <h1>UAN / ESI Document Scanner</h1>
+  <p>Runs on this computer. Photos and PDFs never leave it, and no internet is needed once set up.</p>
+</header>
+<main>
+  <div id="libBanner" class="banner hidden"></div>
+
+  <section id="home">
+    <div class="card">
+      <h2>1. Excel template</h2>
+      <p id="tplInfo" class="muted">No template chosen yet.</p>
+      <div class="row">
+        <input id="tplFile" type="file" accept=".xlsx" class="hidden">
+        <button id="tplBtn">Choose template (.xlsx)</button>
+        <button id="dlBtn" class="sec" disabled>Download filled Excel</button>
+      </div>
+      <p class="muted">The site works on its own copy; your original file is never changed.</p>
+    </div>
+
+    <div class="card">
+      <h2>2. Batch details (same for everyone)</h2>
+      <div id="defView" class="muted"></div>
+      <div id="defForm" class="grid hidden"></div>
+      <div class="row" style="margin-top:10px">
+        <button id="defEdit" class="sec">Edit</button>
+        <button id="defSave" class="hidden">Save</button>
+        <button id="defCancel" class="sec hidden">Cancel</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3. Add a person</h2>
+      <p class="muted">Select all photos / PDFs of ONE person together (Aadhaar, PAN, licence, bank details). You can correct everything before it is saved.</p>
+      <input id="docFiles" type="file" accept="image/*,application/pdf" multiple class="hidden">
+      <button id="docBtn" disabled>Select documents</button>
+      <div id="progress" class="hidden">
+        <div class="bar"><div id="barFill"></div></div>
+        <div id="progText" class="muted"></div>
+      </div>
+    </div>
+    <div id="homeMsg" class="muted"></div>
+  </section>
+
+  <section id="reviewSec" class="hidden">
+    <div class="card">
+      <h2>Check the details</h2>
+      <div id="summary" class="summary"></div>
+      <div class="review">
+        <div>
+          <div id="fields" class="grid"></div>
+          <div class="row" style="margin-top:16px">
+            <button id="saveRow">Save to Excel</button>
+            <button id="discard" class="sec">Discard</button>
+          </div>
+          <div id="saveMsg" class="msg-bad"></div>
+        </div>
+        <div class="docs" id="docsPane"></div>
+      </div>
+    </div>
+  </section>
+</main>
+<div id="zoom"><img alt=""></div>
+
+<script src="core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
